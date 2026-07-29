@@ -19,3 +19,6 @@ Thumbs.db
 
 # Environment secrets (for when you add deployment scripts)
 .env
+out/
+cache/
+broadcast/
