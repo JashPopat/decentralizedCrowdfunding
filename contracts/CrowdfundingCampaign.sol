@@ -8,6 +8,9 @@ pragma solidity ^0.8.20;
 contract CrowdfundingCampaign {
     // errors
 
+    error CampaignEnded();
+    error ContributionMustBePositive();
+
     // constants
 
     // structs
@@ -30,8 +33,12 @@ contract CrowdfundingCampaign {
     uint256 public deadline;
     address public priceFeed;
 
+    mapping(address => uint) public contributionsWei;
+    uint public totalContributedWei;
+
     // events
 
+    event ContributionReceived(address backer, uint amountWei); 
 
     constructor(
         address _founder,
@@ -60,5 +67,16 @@ contract CrowdfundingCampaign {
 
     function getMilestoneCount() external view returns (uint) {
         return milestones.length;
+    }
+
+    function contribute() external payable {
+        // manipulation of timestamp is insignificant
+        if (block.timestamp >= deadline) revert CampaignEnded();
+        if (msg.value == 0) revert ContributionMustBePositive();
+
+        contributionsWei[msg.sender] += msg.value;
+        totalContributedWei += msg.value;
+
+        emit ContributionReceived(msg.sender, msg.value);
     }
 }
