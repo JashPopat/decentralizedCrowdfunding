@@ -1,0 +1,21 @@
+# Remix IDE
+.deps/
+artifacts/
+.states/
+
+# Node
+node_modules/
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment secrets (for when you add deployment scripts)
+.env
