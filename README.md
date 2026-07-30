@@ -24,3 +24,5 @@ etc
 
 **notes:**
 contract expects a price feed address which implements latestRoundData().
+
+MockEthUSDPriceFee.sol is currently a placeholder for a local mock oracle
