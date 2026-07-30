@@ -24,7 +24,7 @@ contract CrowdfundingCampaign {
     error CampaignNotEnded();
     error CampaignWasFunded();
     error NothingToRefund();
-    
+
     // constants
 
     // structs
@@ -165,6 +165,5 @@ contract CrowdfundingCampaign {
         milestones[milestoneId].proofHash = proofHash;
 
         emit MilestoneProofSubmitted(milestoneId, proofHash);
-
     }
 }
