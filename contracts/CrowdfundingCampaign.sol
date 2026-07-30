@@ -24,6 +24,10 @@ contract CrowdfundingCampaign {
     error CampaignNotEnded();
     error CampaignWasFunded();
     error NothingToRefund();
+    error NotABacker();
+    error AlreadyVoted();
+    error ProofNotSubmitted();
+    error MilestoneNotApproved();
 
     // constants
 
@@ -52,12 +56,19 @@ contract CrowdfundingCampaign {
     mapping(address => uint) public contributionsUsd;
     uint public totalContributedUsd;
 
+    // votes are weighted by the backer's usd contribution
+    mapping(uint => mapping(address => bool)) public hasVoted;
+    mapping(uint => uint) public votesForUsd;
+    mapping(uint => uint) public votesAgainstUsd;
+
     // events
 
-    event ContributionReceived(address indexed backer, uint amountWei, uint amountUsd); 
+    event ContributionReceived(address indexed backer, uint amountWei, uint amountUsd);
     event FundsReleased(uint indexed milestoneId, uint amountWei);
     event RefundClaimed(address indexed backer, uint amountWei);
     event MilestoneProofSubmitted(uint milestoneId, string proofHash);
+    event MilestoneVoted(uint indexed milestoneId, address indexed backer, bool support, uint weightUsd);
+    event MilestoneApproved(uint indexed milestoneId);
 
     constructor(
         address _founder,
@@ -165,5 +176,53 @@ contract CrowdfundingCampaign {
         milestones[milestoneId].proofHash = proofHash;
 
         emit MilestoneProofSubmitted(milestoneId, proofHash);
+    }
+
+    function voteOnMilestone(uint milestoneId, bool support) external {
+        if (!isFunded()) revert CampaignNotFunded();
+        if (milestoneId >= milestones.length) revert InvalidMilestone();
+
+        Milestone storage milestone = milestones[milestoneId];
+        if (!milestone.submitted) revert ProofNotSubmitted();
+        if (milestone.released) revert MilestoneReleased();
+
+        uint weightUsd = contributionsUsd[msg.sender];
+        if (weightUsd == 0) revert NotABacker();
+        if (hasVoted[milestoneId][msg.sender]) revert AlreadyVoted();
+
+        hasVoted[milestoneId][msg.sender] = true;
+
+        if (support) {
+            votesForUsd[milestoneId] += weightUsd;
+        } else {
+            votesAgainstUsd[milestoneId] += weightUsd;
+        }
+
+        emit MilestoneVoted(milestoneId, msg.sender, support, weightUsd);
+
+        // approved once support passes half of the contributed usd
+        if (!milestone.approved && votesForUsd[milestoneId] * 2 > totalContributedUsd) {
+            milestone.approved = true;
+            emit MilestoneApproved(milestoneId);
+        }
+    }
+
+    function releaseMilestone(uint milestoneId) external {
+        if (msg.sender != founder) revert OnlyFounder();
+        if (!isFunded()) revert CampaignNotFunded();
+        if (milestoneId >= milestones.length) revert InvalidMilestone();
+
+        Milestone storage milestone = milestones[milestoneId];
+        if (milestone.released) revert MilestoneReleased();
+        if (!milestone.submitted) revert ProofNotSubmitted();
+        if (!milestone.approved) revert MilestoneNotApproved();
+
+        uint amountWei = (totalContributedWei * milestone.bps) / 10_000;
+        milestone.released = true;
+
+        (bool success, ) = payable(founder).call{value: amountWei}("");
+        if (!success) revert TransferFailed();
+
+        emit FundsReleased(milestoneId, amountWei);
     }
 }
