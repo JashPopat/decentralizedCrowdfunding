@@ -135,6 +135,7 @@ contract CrowdfundingCampaign {
         emit FundsReleased(0, amountWei);
     }
 
+    // refund if funding goal failed
     function claimRefund() external {
         if (!hasEnded()) revert CampaignNotEnded();
         if (isFunded()) revert CampaignWasFunded();
