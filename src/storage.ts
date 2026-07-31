@@ -17,7 +17,7 @@ export function connectIpfs(
     filename = "file",
   ): Promise<string> {
     const form = new FormData();
-    form.append("file", new Blob([content]), filename);
+    form.append("file", new Blob([Buffer.from(content)]), filename);
 
     const res = await fetch(`${apiUrl}/api/v0/add`, {
       method: "POST",

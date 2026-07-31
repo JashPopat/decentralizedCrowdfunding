@@ -5,6 +5,7 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  type Abi,
   type Address,
   type PublicClient,
   type WalletClient,
@@ -14,7 +15,7 @@ import { privateKeyToAccount } from "viem/accounts";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface ContractArtifact {
-  abi: readonly unknown[];
+  abi: Abi;
   bytecode: `0x${string}`;
 }
 
@@ -29,7 +30,7 @@ export function loadArtifact(contractName: string): ContractArtifact {
   );
   const raw = JSON.parse(readFileSync(path, "utf-8"));
   return {
-    abi: raw.abi,
+    abi: raw.abi as Abi,
     bytecode: raw.bytecode.object as `0x${string}`,
   };
 }
