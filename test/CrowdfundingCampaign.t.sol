@@ -166,7 +166,7 @@ contract CrowdfundingCampaignTest is Test {
         fundToGoal();
         submitProofFor(1);
 
-        (, , string memory proofHash, bool submitted, , ) = campaign.milestones(1);
+        (, , string memory proofHash, bool submitted, , , , ) = campaign.milestones(1);
         assertEq(proofHash, "ipfs://proof", "proof hash should be stored");
         assertTrue(submitted, "milestone should be marked submitted");
     }
@@ -187,9 +187,9 @@ contract CrowdfundingCampaignTest is Test {
 
         // alice holds 1800 of 3000 usd, past half on her own
         vm.prank(alice);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
-        (, , , , bool approved, ) = campaign.milestones(1);
+        (, , , , bool approved, , , ) = campaign.milestones(1);
         assertTrue(approved, "milestone should be approved");
         assertEq(campaign.votesForUsd(1), 1800e8, "support weight should be the usd contribution");
     }
@@ -200,23 +200,10 @@ contract CrowdfundingCampaignTest is Test {
 
         // bob holds 1200 of 3000 usd, short of half
         vm.prank(bob);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
-        (, , , , bool approved, ) = campaign.milestones(1);
+        (, , , , bool approved, , , ) = campaign.milestones(1);
         assertFalse(approved, "milestone should not be approved on a minority stake");
-    }
-
-    function test_voteAgainstIsTrackedSeparately() public {
-        fundToGoal();
-        submitProofFor(1);
-
-        vm.prank(alice);
-        campaign.voteOnMilestone(1, false);
-
-        (, , , , bool approved, ) = campaign.milestones(1);
-        assertFalse(approved, "an against vote should not approve");
-        assertEq(campaign.votesAgainstUsd(1), 1800e8, "against weight should be tracked");
-        assertEq(campaign.votesForUsd(1), 0, "support weight should stay zero");
     }
 
     function test_voteRevertsForNonBacker() public {
@@ -225,7 +212,7 @@ contract CrowdfundingCampaignTest is Test {
 
         vm.prank(carol);
         vm.expectRevert(CrowdfundingCampaign.NotABacker.selector);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
     }
 
     function test_voteRevertsOnSecondVote() public {
@@ -233,11 +220,11 @@ contract CrowdfundingCampaignTest is Test {
         submitProofFor(1);
 
         vm.prank(bob);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
         vm.prank(bob);
         vm.expectRevert(CrowdfundingCampaign.AlreadyVoted.selector);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
     }
 
     function test_voteRevertsBeforeProofSubmitted() public {
@@ -245,7 +232,7 @@ contract CrowdfundingCampaignTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(CrowdfundingCampaign.ProofNotSubmitted.selector);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
     }
 
     function test_voteRevertsForUnknownMilestone() public {
@@ -253,7 +240,7 @@ contract CrowdfundingCampaignTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(CrowdfundingCampaign.InvalidMilestone.selector);
-        campaign.voteOnMilestone(2, true);
+        campaign.voteOnMilestone(2);
     }
 
     // releases
@@ -274,7 +261,7 @@ contract CrowdfundingCampaignTest is Test {
         submitProofFor(1);
 
         vm.prank(alice);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
         uint balanceBefore = founder.balance;
         vm.prank(founder);
@@ -283,7 +270,7 @@ contract CrowdfundingCampaignTest is Test {
         // milestone 1 is 60% of 1 ether
         assertEq(founder.balance, balanceBefore + 0.6 ether, "founder should receive the approved share");
 
-        (, , , , , bool released) = campaign.milestones(1);
+        (, , , , , bool released, , ) = campaign.milestones(1);
         assertTrue(released, "milestone should be marked released");
     }
 
@@ -301,7 +288,7 @@ contract CrowdfundingCampaignTest is Test {
         submitProofFor(1);
 
         vm.prank(alice);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
         vm.prank(alice);
         vm.expectRevert(CrowdfundingCampaign.OnlyFounder.selector);
@@ -313,7 +300,7 @@ contract CrowdfundingCampaignTest is Test {
         submitProofFor(1);
 
         vm.prank(alice);
-        campaign.voteOnMilestone(1, true);
+        campaign.voteOnMilestone(1);
 
         vm.prank(founder);
         campaign.releaseMilestone(1);

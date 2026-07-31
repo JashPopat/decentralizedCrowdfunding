@@ -28,8 +28,14 @@ contract CrowdfundingCampaign {
     error AlreadyVoted();
     error ProofNotSubmitted();
     error MilestoneNotApproved();
+    error DeadlinePassed();
+    error MilestoneAlreadyApproved();
+    error VotingStillOpen();
+    error MilestoneIsRejected();
 
     // constants
+
+    uint public constant VOTING_PERIOD = 3 days;
 
     // structs
 
@@ -40,7 +46,8 @@ contract CrowdfundingCampaign {
         bool submitted;
         bool approved;
         bool released;
-
+        uint voteDeadline;
+        bool rejected;
     }
 
     // state vars
@@ -59,7 +66,6 @@ contract CrowdfundingCampaign {
     // votes are weighted by the backer's usd contribution
     mapping(uint => mapping(address => bool)) public hasVoted;
     mapping(uint => uint) public votesForUsd;
-    mapping(uint => uint) public votesAgainstUsd;
 
     // events
 
@@ -67,8 +73,9 @@ contract CrowdfundingCampaign {
     event FundsReleased(uint indexed milestoneId, uint amountWei);
     event RefundClaimed(address indexed backer, uint amountWei);
     event MilestoneProofSubmitted(uint milestoneId, string proofHash);
-    event MilestoneVoted(uint indexed milestoneId, address indexed backer, bool support, uint weightUsd);
+    event MilestoneVoted(uint indexed milestoneId, address indexed backer, uint weightUsd);
     event MilestoneApproved(uint indexed milestoneId);
+    event MilestoneRejected(uint indexed milestoneId);
 
     constructor(
         address _founder,
@@ -90,7 +97,9 @@ contract CrowdfundingCampaign {
                 bps: _milestoneBps[i],
                 submitted: false,
                 approved: false,
-                released: false
+                released: false,
+                voteDeadline: 0,
+                rejected: false
             }));
         }
     }
@@ -174,17 +183,21 @@ contract CrowdfundingCampaign {
 
         milestones[milestoneId].submitted = true;
         milestones[milestoneId].proofHash = proofHash;
+        milestones[milestoneId].voteDeadline = block.timestamp + VOTING_PERIOD;
 
         emit MilestoneProofSubmitted(milestoneId, proofHash);
     }
 
-    function voteOnMilestone(uint milestoneId, bool support) external {
+    function voteOnMilestone(uint milestoneId) external {
         if (!isFunded()) revert CampaignNotFunded();
         if (milestoneId >= milestones.length) revert InvalidMilestone();
 
         Milestone storage milestone = milestones[milestoneId];
         if (!milestone.submitted) revert ProofNotSubmitted();
         if (milestone.released) revert MilestoneReleased();
+        if (milestone.rejected) revert MilestoneIsRejected();
+        if (block.timestamp >= milestone.voteDeadline) revert DeadlinePassed();
+        if (milestone.approved) revert MilestoneAlreadyApproved();
 
         uint weightUsd = contributionsUsd[msg.sender];
         if (weightUsd == 0) revert NotABacker();
@@ -192,13 +205,9 @@ contract CrowdfundingCampaign {
 
         hasVoted[milestoneId][msg.sender] = true;
 
-        if (support) {
-            votesForUsd[milestoneId] += weightUsd;
-        } else {
-            votesAgainstUsd[milestoneId] += weightUsd;
-        }
+        votesForUsd[milestoneId] += weightUsd;
 
-        emit MilestoneVoted(milestoneId, msg.sender, support, weightUsd);
+        emit MilestoneVoted(milestoneId, msg.sender, weightUsd);
 
         // approved once support passes half of the contributed usd
         if (!milestone.approved && votesForUsd[milestoneId] * 2 > totalContributedUsd) {
@@ -213,6 +222,7 @@ contract CrowdfundingCampaign {
         if (milestoneId >= milestones.length) revert InvalidMilestone();
 
         Milestone storage milestone = milestones[milestoneId];
+        if (milestone.rejected) revert MilestoneIsRejected();
         if (milestone.released) revert MilestoneReleased();
         if (!milestone.submitted) revert ProofNotSubmitted();
         if (!milestone.approved) revert MilestoneNotApproved();
@@ -224,5 +234,20 @@ contract CrowdfundingCampaign {
         if (!success) revert TransferFailed();
 
         emit FundsReleased(milestoneId, amountWei);
+    }
+
+    function rejectExpiredMilestone(uint milestoneId) external {
+        if (milestoneId >= milestones.length) revert InvalidMilestone();
+
+        Milestone storage milestone = milestones[milestoneId];
+
+        if (!milestone.submitted) revert ProofNotSubmitted();
+        if (milestone.approved) revert MilestoneAlreadyApproved();
+        if (milestone.rejected) revert MilestoneIsRejected();
+        if (block.timestamp < milestone.voteDeadline) revert VotingStillOpen();
+
+        milestone.rejected = true;
+
+        emit MilestoneRejected(milestoneId);
     }
 }
