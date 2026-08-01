@@ -11,6 +11,8 @@ export interface Milestone {
   submitted: boolean;
   approved: boolean;
   released: boolean;
+  voteDeadline: bigint;
+  rejected: boolean;
 }
 
 export interface CampaignSummary {
@@ -155,6 +157,63 @@ export async function claimRefund(
   return hash;
 }
 
+// Casts a weighted vote (by the caller's USD contribution) to approve a milestone.
+export async function voteOnMilestone(
+  wallet: WalletClient,
+  publicClient: PublicClient,
+  campaignAddress: Address,
+  milestoneId: number,
+): Promise<`0x${string}`> {
+  const hash = await wallet.writeContract({
+    address: campaignAddress,
+    abi: campaignArtifact.abi,
+    functionName: "voteOnMilestone",
+    args: [BigInt(milestoneId)],
+    chain: wallet.chain,
+    account: wallet.account!,
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
+}
+
+// Releases an approved milestone's funds to the founder.
+export async function releaseMilestone(
+  wallet: WalletClient,
+  publicClient: PublicClient,
+  campaignAddress: Address,
+  milestoneId: number,
+): Promise<`0x${string}`> {
+  const hash = await wallet.writeContract({
+    address: campaignAddress,
+    abi: campaignArtifact.abi,
+    functionName: "releaseMilestone",
+    args: [BigInt(milestoneId)],
+    chain: wallet.chain,
+    account: wallet.account!,
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
+}
+
+// Marks a milestone rejected once its voting window has passed without approval.
+export async function rejectExpiredMilestone(
+  wallet: WalletClient,
+  publicClient: PublicClient,
+  campaignAddress: Address,
+  milestoneId: number,
+): Promise<`0x${string}`> {
+  const hash = await wallet.writeContract({
+    address: campaignAddress,
+    abi: campaignArtifact.abi,
+    functionName: "rejectExpiredMilestone",
+    args: [BigInt(milestoneId)],
+    chain: wallet.chain,
+    account: wallet.account!,
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
+}
+
 export async function getCampaignSummary(
   publicClient: PublicClient,
   campaignAddress: Address,
@@ -176,17 +235,19 @@ export async function getCampaignSummary(
   const milestones = await Promise.all(
     Array.from({ length: Number(milestoneCount) }, (_, i) =>
       publicClient.readContract({ ...base, functionName: "milestones", args: [BigInt(i)] }) as Promise<
-        [string, number, string, boolean, boolean, boolean]
+        [string, number, string, boolean, boolean, boolean, bigint, boolean]
       >,
     ),
   ).then((rows) =>
-    rows.map(([description, bps, proofHash, submitted, approved, released]) => ({
+    rows.map(([description, bps, proofHash, submitted, approved, released, voteDeadline, rejected]) => ({
       description,
       bps,
       proofHash,
       submitted,
       approved,
       released,
+      voteDeadline,
+      rejected,
     })),
   );
 

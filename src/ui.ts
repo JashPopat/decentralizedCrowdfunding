@@ -17,6 +17,9 @@ export type MenuAction =
   | "contribute"
   | "submitProof"
   | "releaseInitialFunds"
+  | "voteOnMilestone"
+  | "releaseMilestone"
+  | "rejectExpiredMilestone"
   | "claimRefund"
   | "switchAccount"
   | "quit";
@@ -32,6 +35,9 @@ export async function askMenuAction(): Promise<MenuAction> {
       { name: "Contribute to a campaign", value: "contribute" },
       { name: "Submit milestone proof (founder)", value: "submitProof" },
       { name: "Release initial milestone funds (founder)", value: "releaseInitialFunds" },
+      { name: "Vote to approve a milestone (backer)", value: "voteOnMilestone" },
+      { name: "Release an approved milestone (founder)", value: "releaseMilestone" },
+      { name: "Reject an expired milestone vote", value: "rejectExpiredMilestone" },
       { name: "Claim refund (failed campaign)", value: "claimRefund" },
       { name: "Switch account", value: "switchAccount" },
       { name: "Quit", value: "quit" },
@@ -98,8 +104,9 @@ export function printSummary(address: string, summary: CampaignSummary): void {
   console.log(`  funded: ${summary.isFunded}, ended: ${summary.hasEnded}`);
   console.log("  milestones:");
   summary.milestones.forEach((m, i) => {
+    const voteDeadline = m.voteDeadline > 0n ? new Date(Number(m.voteDeadline) * 1000).toISOString() : "-";
     console.log(
-      `    [${i}] ${m.description} (${m.bps / 100}%) submitted=${m.submitted} approved=${m.approved} released=${m.released}`,
+      `    [${i}] ${m.description} (${m.bps / 100}%) submitted=${m.submitted} approved=${m.approved} rejected=${m.rejected} released=${m.released} voteDeadline=${voteDeadline}`,
     );
   });
   console.log("");

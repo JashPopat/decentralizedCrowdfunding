@@ -75,6 +75,30 @@ async function main() {
           break;
         }
 
+        case "voteOnMilestone": {
+          const campaignAddress = await ui.askAddress("Campaign address");
+          const milestoneId = await ui.askMilestoneId();
+          const hash = await campaign.voteOnMilestone(wallet, publicClient, campaignAddress, milestoneId);
+          console.log(`Vote cast. tx: ${hash}`);
+          break;
+        }
+
+        case "releaseMilestone": {
+          const campaignAddress = await ui.askAddress("Campaign address");
+          const milestoneId = await ui.askMilestoneId();
+          const hash = await campaign.releaseMilestone(wallet, publicClient, campaignAddress, milestoneId);
+          console.log(`Milestone released. tx: ${hash}`);
+          break;
+        }
+
+        case "rejectExpiredMilestone": {
+          const campaignAddress = await ui.askAddress("Campaign address");
+          const milestoneId = await ui.askMilestoneId();
+          const hash = await campaign.rejectExpiredMilestone(wallet, publicClient, campaignAddress, milestoneId);
+          console.log(`Milestone marked rejected. tx: ${hash}`);
+          break;
+        }
+
         case "claimRefund": {
           const campaignAddress = await ui.askAddress("Campaign address");
           const hash = await campaign.claimRefund(wallet, publicClient, campaignAddress);
