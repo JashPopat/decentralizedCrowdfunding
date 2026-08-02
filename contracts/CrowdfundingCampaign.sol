@@ -32,6 +32,8 @@ contract CrowdfundingCampaign {
     error MilestoneAlreadyApproved();
     error VotingStillOpen();
     error MilestoneIsRejected();
+    error CampaignNotFailed();
+    error AlreadyRefunded();
 
     // constants
 
@@ -57,11 +59,16 @@ contract CrowdfundingCampaign {
     uint256 public goalUsd;
     uint256 public deadline;
     address public priceFeed;
+    bool public campaignFailed = false;
+    uint256 public rejectedMilestoneId;
+    uint256 public refundableWei;
+    mapping(address => bool) public hasClaimedProRataRefund;
 
     mapping(address => uint) public contributionsWei;
     uint public totalContributedWei;
     mapping(address => uint) public contributionsUsd;
     uint public totalContributedUsd;
+
 
     // votes are weighted by the backer's usd contribution
     mapping(uint => mapping(address => bool)) public hasVoted;
@@ -248,7 +255,29 @@ contract CrowdfundingCampaign {
         if (block.timestamp < milestone.voteDeadline) revert VotingStillOpen();
 
         milestone.rejected = true;
+        campaignFailed = true;
+        rejectedMilestoneId = milestoneId;
+        // snapshot for refunds
+        refundableWei = address(this).balance;
 
         emit MilestoneRejected(milestoneId);
+    }
+
+    function claimProRataRefund() external {
+        if (!campaignFailed) revert CampaignNotFailed();
+        if (hasClaimedProRataRefund[msg.sender]) revert AlreadyRefunded();
+
+        uint contributedWei = contributionsWei[msg.sender];
+        if (contributedWei == 0) revert NothingToRefund();
+
+        uint amountWei = (refundableWei * contributedWei) / totalContributedWei;
+
+        hasClaimedProRataRefund[msg.sender] = true;
+        contributionsWei[msg.sender] = 0;
+
+        (bool success, ) = payable(msg.sender).call{value: amountWei}("");
+        if (!success) revert TransferFailed();
+
+        emit RefundClaimed(msg.sender, amountWei);
     }
 }
