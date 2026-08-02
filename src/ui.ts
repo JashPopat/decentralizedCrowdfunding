@@ -21,6 +21,7 @@ export type MenuAction =
   | "releaseMilestone"
   | "rejectExpiredMilestone"
   | "claimRefund"
+  | "claimProRataRefund"
   | "switchAccount"
   | "quit";
 
@@ -39,6 +40,7 @@ export async function askMenuAction(): Promise<MenuAction> {
       { name: "Release an approved milestone (founder)", value: "releaseMilestone" },
       { name: "Reject an expired milestone vote", value: "rejectExpiredMilestone" },
       { name: "Claim refund (failed campaign)", value: "claimRefund" },
+      { name: "Claim pro-rata refund (failed milestone)", value: "claimProRataRefund" },
       { name: "Switch account", value: "switchAccount" },
       { name: "Quit", value: "quit" },
     ],

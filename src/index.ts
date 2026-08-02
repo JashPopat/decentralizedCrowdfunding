@@ -106,6 +106,13 @@ async function main() {
           break;
         }
 
+        case "claimProRataRefund": {
+          const campaignAddress = await ui.askAddress("Campaign address");
+          const hash = await campaign.claimProRataRefund(wallet, publicClient, campaignAddress);
+          console.log(`Pro-rata refund claimed. tx: ${hash}`);
+          break;
+        }
+
         case "switchAccount": {
           accountName = await ui.askAccountName(config);
           break;
