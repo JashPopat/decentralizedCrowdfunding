@@ -9,12 +9,8 @@
     // See also https://aka.ms/tsconfig/module
     "module": "esnext",
     "target": "es2022",
-    "types": [],
+    "types": ["node"],
     "lib": ["es2023"],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
 
     // Other Outputs
     "sourceMap": true,
@@ -45,6 +41,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "noEmit": true,
   }
 }
