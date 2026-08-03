@@ -157,6 +157,22 @@ export async function claimRefund(
   return hash;
 }
 
+export async function claimProRataRefund(
+  wallet: WalletClient,
+  publicClient: PublicClient,
+  campaignAddress: Address,
+): Promise<`0x${string}`> {
+  const hash = await wallet.writeContract({
+    address: campaignAddress,
+    abi: campaignArtifact.abi,
+    functionName: "claimProRataRefund",
+    chain: wallet.chain,
+    account: wallet.account!,
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+  return hash;
+}
+
 // Casts a weighted vote (by the caller's USD contribution) to approve a milestone.
 export async function voteOnMilestone(
   wallet: WalletClient,
