@@ -129,14 +129,20 @@ contract CrowdfundingCampaign {
         emit ContributionReceived(msg.sender, msg.value, contributionUsd);
     }
 
+    // 2% markup on the ETH->USD conversion at contribution time, offsetting Sepolia gas
+    // costs instead of charging an explicit transaction fee. Refunds return the exact
+    // ETH originally sent (see claimRefund/claimProRataRefund), so this never applies to them.
+    uint private constant EXCHANGE_MARKUP_BPS = 9_800; // 98% credited, 10_000 = 100%
+
     function ethToUsd(uint amountWei) internal view returns (uint) {
         (, int answer, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
 
         if (answer <= 0 ) revert InvalidOraclePrice();
 
         uint price = uint(answer);
+        uint rawUsd = (amountWei * price) / 1e18;
 
-        return (amountWei * price) / 1e18;
+        return (rawUsd * EXCHANGE_MARKUP_BPS) / 10_000;
     }
 
     function isFunded() public view returns (bool) {

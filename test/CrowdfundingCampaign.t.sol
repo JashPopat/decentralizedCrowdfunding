@@ -11,9 +11,10 @@ contract CrowdfundingCampaignTest is Test {
     uint256 public constant GOAL_USD = 3000;
     uint256 public constant DURATION_DAYS = 30;
 
-    // 0.6 + 0.4 ether is exactly the goal at $3000/ETH
-    uint256 public constant ALICE_WEI = 0.6 ether;
-    uint256 public constant BOB_WEI = 0.4 ether;
+    // 0.65 + 0.45 ether clears the goal at $3000/ETH after the 2% exchange markup
+    // (raw $3300, credited $3234 vs a $3000 goal), keeping alice:bob at the same 3:2 ratio.
+    uint256 public constant ALICE_WEI = 0.65 ether;
+    uint256 public constant BOB_WEI = 0.45 ether;
 
     MockEthUsdPriceFeed public priceFeed;
     CampaignFactory public factory;
@@ -70,9 +71,9 @@ contract CrowdfundingCampaignTest is Test {
         campaign.contribute{value: ALICE_WEI}();
 
         assertEq(campaign.contributionsWei(alice), ALICE_WEI, "wei should be tracked");
-        assertEq(campaign.contributionsUsd(alice), 1800e8, "usd should be tracked at feed rate");
+        assertEq(campaign.contributionsUsd(alice), 1911e8, "usd should be tracked at feed rate after markup");
         assertEq(campaign.totalContributedWei(), ALICE_WEI, "total wei should be tracked");
-        assertEq(campaign.totalContributedUsd(), 1800e8, "total usd should be tracked");
+        assertEq(campaign.totalContributedUsd(), 1911e8, "total usd should be tracked after markup");
     }
 
     function test_contributeRevertsOnZeroValue() public {
@@ -101,7 +102,7 @@ contract CrowdfundingCampaignTest is Test {
         priceFeed.setAnswer(6000e8);
 
         vm.prank(alice);
-        campaign.contribute{value: 0.5 ether}();
+        campaign.contribute{value: 0.52 ether}();
 
         assertTrue(campaign.isFunded(), "half the eth should reach the goal at double the price");
     }
@@ -185,20 +186,20 @@ contract CrowdfundingCampaignTest is Test {
         fundToGoal();
         submitProofFor(1);
 
-        // alice holds 1800 of 3000 usd, past half on her own
+        // alice holds 1911 of 3234 usd (credited, after markup), past half on her own
         vm.prank(alice);
         campaign.voteOnMilestone(1);
 
         (, , , , bool approved, , , ) = campaign.milestones(1);
         assertTrue(approved, "milestone should be approved");
-        assertEq(campaign.votesForUsd(1), 1800e8, "support weight should be the usd contribution");
+        assertEq(campaign.votesForUsd(1), 1911e8, "support weight should be the usd contribution");
     }
 
     function test_voteBelowMajorityDoesNotApprove() public {
         fundToGoal();
         submitProofFor(1);
 
-        // bob holds 1200 of 3000 usd, short of half
+        // bob holds 1323 of 3234 usd (credited, after markup), short of half
         vm.prank(bob);
         campaign.voteOnMilestone(1);
 
@@ -253,7 +254,7 @@ contract CrowdfundingCampaignTest is Test {
         campaign.releaseInitialFunds();
 
         // milestone 0 is 40% of 1 ether
-        assertEq(founder.balance, balanceBefore + 0.4 ether, "founder should receive the first share");
+        assertEq(founder.balance, balanceBefore + 0.44 ether, "founder should receive the first share");
     }
 
     function test_releaseMilestonePaysFounderAfterApproval() public {
@@ -268,7 +269,7 @@ contract CrowdfundingCampaignTest is Test {
         campaign.releaseMilestone(1);
 
         // milestone 1 is 60% of 1 ether
-        assertEq(founder.balance, balanceBefore + 0.6 ether, "founder should receive the approved share");
+        assertEq(founder.balance, balanceBefore + 0.66 ether, "founder should receive the approved share");
 
         (, , , , , bool released, , ) = campaign.milestones(1);
         assertTrue(released, "milestone should be marked released");
