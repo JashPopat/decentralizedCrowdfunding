@@ -32,6 +32,8 @@ contract CrowdfundingCampaign {
     error MilestoneAlreadyApproved();
     error VotingStillOpen();
     error MilestoneIsRejected();
+    error CampaignNotFailed();
+    error AlreadyRefunded();
 
     // constants
 
@@ -57,11 +59,16 @@ contract CrowdfundingCampaign {
     uint256 public goalUsd;
     uint256 public deadline;
     address public priceFeed;
+    bool public campaignFailed = false;
+    uint256 public rejectedMilestoneId;
+    uint256 public refundableWei;
+    mapping(address => bool) public hasClaimedProRataRefund;
 
     mapping(address => uint) public contributionsWei;
     uint public totalContributedWei;
     mapping(address => uint) public contributionsUsd;
     uint public totalContributedUsd;
+
 
     // votes are weighted by the backer's usd contribution
     mapping(uint => mapping(address => bool)) public hasVoted;
@@ -122,14 +129,20 @@ contract CrowdfundingCampaign {
         emit ContributionReceived(msg.sender, msg.value, contributionUsd);
     }
 
+    // 2% markup on the ETH->USD conversion at contribution time, offsetting Sepolia gas
+    // costs instead of charging an explicit transaction fee. Refunds return the exact
+    // ETH originally sent (see claimRefund/claimProRataRefund), so this never applies to them.
+    uint private constant EXCHANGE_MARKUP_BPS = 9_800; // 98% credited, 10_000 = 100%
+
     function ethToUsd(uint amountWei) internal view returns (uint) {
         (, int answer, , , ) = AggregatorV3Interface(priceFeed).latestRoundData();
 
         if (answer <= 0 ) revert InvalidOraclePrice();
 
         uint price = uint(answer);
+        uint rawUsd = (amountWei * price) / 1e18;
 
-        return (amountWei * price) / 1e18;
+        return (rawUsd * EXCHANGE_MARKUP_BPS) / 10_000;
     }
 
     function isFunded() public view returns (bool) {
@@ -155,6 +168,7 @@ contract CrowdfundingCampaign {
         emit FundsReleased(0, amountWei);
     }
 
+    // refund if funding goal failed
     function claimRefund() external {
         if (!hasEnded()) revert CampaignNotEnded();
         if (isFunded()) revert CampaignWasFunded();
@@ -247,7 +261,29 @@ contract CrowdfundingCampaign {
         if (block.timestamp < milestone.voteDeadline) revert VotingStillOpen();
 
         milestone.rejected = true;
+        campaignFailed = true;
+        rejectedMilestoneId = milestoneId;
+        // snapshot for refunds
+        refundableWei = address(this).balance;
 
         emit MilestoneRejected(milestoneId);
+    }
+
+    function claimProRataRefund() external {
+        if (!campaignFailed) revert CampaignNotFailed();
+        if (hasClaimedProRataRefund[msg.sender]) revert AlreadyRefunded();
+
+        uint contributedWei = contributionsWei[msg.sender];
+        if (contributedWei == 0) revert NothingToRefund();
+
+        uint amountWei = (refundableWei * contributedWei) / totalContributedWei;
+
+        hasClaimedProRataRefund[msg.sender] = true;
+        contributionsWei[msg.sender] = 0;
+
+        (bool success, ) = payable(msg.sender).call{value: amountWei}("");
+        if (!success) revert TransferFailed();
+
+        emit RefundClaimed(msg.sender, amountWei);
     }
 }
