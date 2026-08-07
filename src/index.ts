@@ -20,7 +20,9 @@ async function main() {
     try {
       switch (action) {
         case "deployFactory": {
-          const priceFeed = await ui.askAddress("ETH/USD price feed address");
+          const priceFeed = config.priceFeed
+            ? (config.priceFeed as `0x${string}`)
+            : await ui.askAddress("ETH/USD price feed address");
           const address = await campaign.deployFactory(publicClient, wallet, priceFeed);
           console.log(`Factory deployed at ${address}`);
           break;

@@ -1,9 +1,9 @@
-# Local anvil node + its default pre-funded accounts (well-known test keys, safe to commit).
-rpcUrl: "http://127.0.0.1:8545"
+rpcUrl: "https://eth-sepolia.g.alchemy.com/v2/alch_5sYQzDWHzP4H00ZSdvrjC"
+priceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306"
 accounts:
   - name: founder
-    privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+    privateKey: "0x2c0d3706fde6054204cd4dbe40dc56adde4074c251b269e3a72e29ad47894811"
   - name: alice
-    privateKey: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+    privateKey: "0xf373dc2f853d2ffb60aa6863e3b4d0c9fceb624330c549a43cbf9d3e0b871bcd"
   - name: bob
-    privateKey: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+    privateKey: "0x84616a11db242626c383a9763f4c68ff3b1a5cfc4e92bb9fe8fabb5d387421e0"

@@ -8,6 +8,7 @@ export interface AccountConfig {
 
 export interface AppConfig {
   rpcUrl: string;
+  priceFeed?: string;
   accounts: AccountConfig[];
 }
 
